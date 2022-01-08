@@ -1,0 +1,14 @@
+*~
+*.#*
+.idea
+project/project
+project/target
+target
+test_run_dir
+*.anno
+*.fir
+*.v
+.attach*
+.~lock*
+firrtl_black_box_resource_files.f
+Core.anno.json
