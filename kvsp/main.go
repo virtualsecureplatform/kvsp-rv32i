@@ -19,9 +19,8 @@ import (
 
 var flagVerbose bool
 
-const defaultCAHPProc = "ruby"
-const defaultROMSize = 512
-const defaultRAMSize = 512
+const defaultROMSize = 1024
+const defaultRAMSize = 1024
 
 // Flag for a list of values
 // Thanks to: https://stackoverflow.com/a/28323276
@@ -691,7 +690,7 @@ func doRun() error {
 		"--blueprint", blueprint,
 	}
 	if *numGPU > 0 {
-		args = append(args, "--enable-gpu", "--gpu_num", fmt.Sprint(*numGPU))
+		args = append(args, "--enable-gpu", "--num-gpu", fmt.Sprint(*numGPU))
 	}
 
 	return runIyokanTFHE(*nClocks, *bkeyFileName, *outputFileName, *snapshotFileName, *quiet, args, iyokanArgs)
@@ -838,9 +837,9 @@ Commands:
 		err = doVersion()
 	case "genTestELF":
 		if len(os.Args) > 3 {
-			err = genTestELF(os.Args[2], os.Args[3:], 512, 512)
+			err = genTestELF(os.Args[2], os.Args[3:], defaultROMSize, defaultRAMSize)
 		} else {
-			err = genTestELF(os.Args[2], nil, 512, 512)
+			err = genTestELF(os.Args[2], nil, defaultROMSize, defaultRAMSize)
 		}
 	default:
 		flag.Usage()
