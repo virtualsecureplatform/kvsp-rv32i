@@ -12,3 +12,5 @@ test_run_dir
 .~lock*
 firrtl_black_box_resource_files.f
 Core.anno.json
+*.snapshot
+tmp
