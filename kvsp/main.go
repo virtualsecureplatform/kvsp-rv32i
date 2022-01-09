@@ -690,7 +690,7 @@ func doRun() error {
 		"--blueprint", blueprint,
 	}
 	if *numGPU > 0 {
-		args = append(args, "--enable-gpu", "--gpu_num", fmt.Sprint(*numGPU))
+		args = append(args, "--enable-gpu", "--num-gpu", fmt.Sprint(*numGPU))
 	}
 
 	return runIyokanTFHE(*nClocks, *bkeyFileName, *outputFileName, *snapshotFileName, *quiet, args, iyokanArgs)
