@@ -82,20 +82,17 @@ func getPathOf(name string) (string, error) {
 			(this executable's) directory, and others are in ../share/kvsp.
 		*/
 		switch name {
-		case "CAHP_RT":
-			path = "../share/kvsp/cahp-rt"
-		case "CAHP_SIM":
-			path = "cahp-sim"
-		case "CLANG":
-			path = "clang"
+		case "GCC":
+			path = "/opt/riscv32i/bin/riscv32-unknown-elf-gcc"
+			relative = false
 		case "IYOKAN":
 			path = "iyokan"
-		case "IYOKAN-BLUEPRINT-RUBY":
-			path = "../share/kvsp/cahp-ruby.toml"
-		case "IYOKAN-BLUEPRINT-PEARL":
-			path = "../share/kvsp/cahp-pearl.toml"
+		case "IYOKAN-BLUEPRINT-RV32I":
+			path = "rv32i.toml"
 		case "IYOKAN-PACKET":
 			path = "iyokan-packet"
+		case "RV32I_RT":
+			path = "rv32i-rt"
 		default:
 			return "", errors.New("Invalid name")
 		}
@@ -372,8 +369,8 @@ func (pkt *plainPacket) loadTOML(src string) error {
 			} else {
 				pkt.Flags[entry.Name] = false
 			}
-		} else if entry.Size == 16 { // register
-			pkt.Regs[entry.Name] = entry.Bytes[0] | (entry.Bytes[1] << 8)
+		} else if entry.Size == 32 { // register
+			pkt.Regs[entry.Name] = entry.Bytes[0] | (entry.Bytes[1] << 8) | (entry.Bytes[2] << 16) | (entry.Bytes[3] << 24)
 		} else {
 			return errors.New("Invalid TOML for result packet")
 		}
@@ -404,7 +401,7 @@ func (pkt *plainPacket) loadTOML(src string) error {
 	if _, ok := pkt.Flags["finflag"]; !ok {
 		return errors.New("Invalid TOML for result packet: 'finflag' not found")
 	}
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 32; i++ {
 		name := fmt.Sprintf("reg_x%d", i)
 		if _, ok := pkt.Regs[name]; !ok {
 			return errors.New("Invalid TOML for result packet: '" + name + "' not found")
@@ -418,7 +415,7 @@ func (pkt *plainPacket) print(w io.Writer) error {
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "f0\t%t\n", pkt.Flags["finflag"])
 	fmt.Fprintf(w, "\n")
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 32; i++ {
 		name := fmt.Sprintf("reg_x%d", i)
 		fmt.Fprintf(w, "x%d\t%d\n", i, pkt.Regs[name])
 	}
@@ -436,20 +433,20 @@ func (pkt *plainPacket) print(w io.Writer) error {
 }
 
 func doCC() error {
-	// Get the path of clang
-	path, err := getPathOf("CLANG")
+	// Get the path of gcc
+	path, err := getPathOf("GCC")
 	if err != nil {
 		return err
 	}
 
-	// Get the path of cahp-rt
-	cahpRtPath, err := getPathOf("CAHP_RT")
+	// Get the path of rv32i-rt
+	rv32iRtPath, err := getPathOf("RV32I_RT")
 	if err != nil {
 		return err
 	}
 
 	// Run
-	args := []string{"-target", "cahp", "-mcpu=generic", "-Oz", "--sysroot", cahpRtPath}
+	args := []string{"-nostdlib", "-T", rv32iRtPath + "/rv32i.lds", rv32iRtPath + "/utils.S"}
 	args = append(args, os.Args[2:]...)
 	return execCmd(path, args)
 }
@@ -469,8 +466,7 @@ func doEmu() error {
 	// Parse command-line arguments.
 	fs := flag.NewFlagSet("emu", flag.ExitOnError)
 	var (
-		whichCAHPCPU = fs.String("cahp-cpu", defaultCAHPProc, "Which CAHP CPU you use, ruby or pearl")
-		iyokanArgs   arrayFlags
+		iyokanArgs arrayFlags
 	)
 	fs.Var(&iyokanArgs, "iyokan-args", "Raw arguments for Iyokan")
 	err := fs.Parse(os.Args[2:])
@@ -496,7 +492,7 @@ func doEmu() error {
 	defer os.Remove(resTmpFile.Name())
 
 	// Run Iyokan in plain mode
-	blueprint, err := getPathOf(fmt.Sprintf("IYOKAN-BLUEPRINT-%s", strings.ToUpper(*whichCAHPCPU)))
+	blueprint, err := getPathOf("IYOKAN-BLUEPRINT-RV32I")
 	if err != nil {
 		return err
 	}
@@ -821,8 +817,8 @@ Commands:
 	switch os.Args[1] {
 	case "cc":
 		err = doCC()
-	case "debug":
-		err = doDebug()
+	//case "debug":
+	//	err = doDebug()
 	case "dec":
 		err = doDec()
 	case "emu":

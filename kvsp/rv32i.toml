@@ -1,0 +1,63 @@
+
+[[file]]
+type = "yosys-json"
+path = "vsp-core-picorv32.json"
+name = "core"
+
+[[builtin]]
+type = "rom"
+name = "rom"
+in_addr_width = 7
+out_rdata_width = 32
+
+[[builtin]]
+type = "ram"
+name = "ram"
+in_addr_width = 7
+in_wdata_width = 32
+out_rdata_width = 32
+
+[connect]
+"rom/addr[0:6]"          = "core/io_rom_addr[0:6]"
+"core/io_rom_data[0:31]" = "rom/rdata[0:31]"
+
+"ram/wren"      = "core/io_ram_writeEnable"
+"ram/addr[0:6]" = "core/io_ram_addr[0:6]"
+"ram/wdata[0:31]" = "core/io_ram_writeData[0:31]"
+"core/io_ram_readData[0:31]" = "ram/rdata[0:31]"
+
+"core/reset" = "@reset"
+"@finflag" = "core/io_finish"
+
+"@reg_x0[0:31]" = "core/io_regs_0[0:31]"
+"@reg_x1[0:31]" = "core/io_regs_1[0:31]"
+"@reg_x2[0:31]" = "core/io_regs_2[0:31]"
+"@reg_x3[0:31]" = "core/io_regs_3[0:31]"
+"@reg_x4[0:31]" = "core/io_regs_4[0:31]"
+"@reg_x5[0:31]" = "core/io_regs_5[0:31]"
+"@reg_x6[0:31]" = "core/io_regs_6[0:31]"
+"@reg_x7[0:31]" = "core/io_regs_7[0:31]"
+"@reg_x8[0:31]" = "core/io_regs_8[0:31]"
+"@reg_x9[0:31]" = "core/io_regs_9[0:31]"
+"@reg_x10[0:31]" = "core/io_regs_10[0:31]"
+"@reg_x11[0:31]" = "core/io_regs_11[0:31]"
+"@reg_x12[0:31]" = "core/io_regs_12[0:31]"
+"@reg_x13[0:31]" = "core/io_regs_13[0:31]"
+"@reg_x14[0:31]" = "core/io_regs_14[0:31]"
+"@reg_x15[0:31]" = "core/io_regs_15[0:31]"
+"@reg_x16[0:31]" = "core/io_regs_16[0:31]"
+"@reg_x17[0:31]" = "core/io_regs_17[0:31]"
+"@reg_x18[0:31]" = "core/io_regs_18[0:31]"
+"@reg_x19[0:31]" = "core/io_regs_19[0:31]"
+"@reg_x20[0:31]" = "core/io_regs_20[0:31]"
+"@reg_x21[0:31]" = "core/io_regs_21[0:31]"
+"@reg_x22[0:31]" = "core/io_regs_22[0:31]"
+"@reg_x23[0:31]" = "core/io_regs_23[0:31]"
+"@reg_x24[0:31]" = "core/io_regs_24[0:31]"
+"@reg_x25[0:31]" = "core/io_regs_25[0:31]"
+"@reg_x26[0:31]" = "core/io_regs_26[0:31]"
+"@reg_x27[0:31]" = "core/io_regs_27[0:31]"
+"@reg_x28[0:31]" = "core/io_regs_28[0:31]"
+"@reg_x29[0:31]" = "core/io_regs_29[0:31]"
+"@reg_x30[0:31]" = "core/io_regs_30[0:31]"
+"@reg_x31[0:31]" = "core/io_regs_31[0:31]"

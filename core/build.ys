@@ -13,6 +13,8 @@ techmap; opt
 #To make easy to parse for V2TT
 flatten;
 
+dfflegalize -cell $_DFF_P_ 01
+
 # mapping logic to gates.
 abc -g gates,MUX
 
