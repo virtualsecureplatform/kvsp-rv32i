@@ -667,7 +667,6 @@ func doRun() error {
 		inputFileName    = fs.String("i", "", "Input file name (encrypted)")
 		outputFileName   = fs.String("o", "", "Output file name (encrypted)")
 		numGPU           = fs.Uint("g", 0, "Number of GPUs (Unspecify or set 0 for CPU mode)")
-		whichCAHPCPU     = fs.String("cahp-cpu", defaultCAHPProc, "Which CAHP CPU you use, ruby or pearl")
 		snapshotFileName = fs.String("snapshot", "", "Snapshot file name to write in")
 		quiet            = fs.Bool("quiet", false, "Be quiet")
 		iyokanArgs       arrayFlags
@@ -682,7 +681,7 @@ func doRun() error {
 		return errors.New("Specify -c, -bkey, -i, and -o options properly")
 	}
 
-	blueprint, err := getPathOf(fmt.Sprintf("IYOKAN-BLUEPRINT-%s", strings.ToUpper(*whichCAHPCPU)))
+	blueprint, err := getPathOf("IYOKAN-BLUEPRINT-RV32I")
 	if err != nil {
 		return err
 	}
