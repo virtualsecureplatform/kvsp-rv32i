@@ -17,7 +17,7 @@ class ExternalRam(val conf: CoreConfig, val d:Seq[Int]) extends Module {
       mem((io.port.addr*4.U) + 1.U) := io.port.writeData(15, 8)
       mem((io.port.addr*4.U) + 2.U) := io.port.writeData(23, 16)
       mem((io.port.addr*4.U) + 3.U) := io.port.writeData(31, 24)
-      printf("MEM[0x%x] <= 0x%x\n", io.port.addr, io.port.writeData)
+      //printf("MEM[0x%x] <= 0x%x\n", io.port.addr, io.port.writeData)
     }
 
     io.port.readData := Cat(mem(io.port.addr*4.U+3.U), mem(io.port.addr*4.U+2.U), mem(io.port.addr*4.U+1.U), mem(io.port.addr*4.U))

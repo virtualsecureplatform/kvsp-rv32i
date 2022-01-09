@@ -18,20 +18,21 @@ class Core(val conf: CoreConfig) extends Module {
     core.io.clk := clock
 
     io.rom.addr := (core.io.mem_addr >> 2)
+    io.ram.addr := (core.io.mem_addr >> 2)
 
-    io.ram.addr := core.io.mem_addr
     core.io.mem_ready := true.B
 
     when(core.io.mem_instr) {
         core.io.mem_rdata := io.rom.data
     }.otherwise {
         core.io.mem_rdata := io.ram.readData
+        //printf("[RAM 0x%x] => 0x%x\n", io.ram.addr, io.ram.readData);
     }
 
     val wstrb = Wire(UInt(4.W))
     wstrb := core.io.mem_wstrb
     io.ram.writeData := DontCare
-    when(wstrb != 0.U(4.W)) {
+    when(wstrb =/= 0.U(4.W)) {
         io.ram.writeEnable := true.B
         when(wstrb === 15.U(4.W)) {
             io.ram.writeData := core.io.mem_wdata

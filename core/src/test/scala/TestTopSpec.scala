@@ -13,7 +13,7 @@ class TestTopTester(c: TestTop, res: Int) extends PeekPokeTester(c) {
     var end = false
     var cycle = 0
     while (peek(c.io.finish) == 0 && !end){
-        if (cycle > 150)
+        if (cycle > 5000)
         {
            end = true 
         }
@@ -35,7 +35,7 @@ class TestTopTester(c: TestTop, res: Int) extends PeekPokeTester(c) {
 class TestTopSpec extends AnyFreeSpec with Matchers {
     val testDir = new File("src/test/binary/")
     implicit val customConfig: Configuration = Configuration.default.withDefaults
-    testDir.listFiles().filter(f => f.getName().contains("test_sw_li-3.json")).foreach { f =>
+    testDir.listFiles().filter(f => f.getName().contains(".json")).foreach { f =>
         val json = scala.io.Source.fromFile(f.getAbsolutePath()).mkString
         val testData = decode[TestData](json) match {
             case Right(data) => data
