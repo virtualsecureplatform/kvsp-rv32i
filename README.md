@@ -13,6 +13,6 @@ $ sudo tar -xzf riscv32-unknown-elf.gcc-10.2.0.rv32i.ilp32.newlib.tar.gz -C /opt
 ## KVSP-RV32I
 
 ```
-$ wget
-$ tar -xvf kvsp-rv32i-0.0.1.tar.gz
+$ sudo apt install libomp5 libbinutils zlib1g libmpc3
+$ tar -xvf kvsp-rv32i.tar.gz
 ```

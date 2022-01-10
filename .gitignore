@@ -14,3 +14,5 @@ firrtl_black_box_resource_files.f
 Core.anno.json
 *.snapshot
 tmp
+kvsp-rv32i
+kvsp-rv32i.tar.gz
