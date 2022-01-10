@@ -1,5 +1,5 @@
 # KVSP-RV32I
-Alternative KVSP using picorv32
+Alternative VSP implementation using picorv32
 
 # Installation
 ## RV32I toolchain
