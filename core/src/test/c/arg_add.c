@@ -1,3 +1,4 @@
+// #TEST {"result":42, "args":["10", "32"]}
 int my_atoi(char *p) {
     int k = 0;
     while (*p) {

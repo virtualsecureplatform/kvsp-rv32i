@@ -1,3 +1,4 @@
+// #TEST {"result": 5, "args":["5"]}
 static int fib(int n) {
   int a = 0, b = 1;
   for (int i = 0; i < n; i++) {

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"debug/elf"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,10 +13,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/uuid"
 )
 
 var flagVerbose bool
@@ -185,7 +189,6 @@ func attachCommandLineOptions(ram []byte, cmdOptsSrc []string) error {
 	for index%4 != 0 {
 		index--
 	}
-	fmt.Printf("SP:%d\n", index)
 
 	// Set *argv to RAM
 	for _, val := range sargv {
@@ -198,7 +201,6 @@ func attachCommandLineOptions(ram []byte, cmdOptsSrc []string) error {
 	// Save initial stack pointer in RAM
 	initSP := index
 	write32le(ram[ramSize-4:ramSize], initSP)
-	fmt.Printf("initSP:%d\n", initSP)
 
 	return nil
 }
@@ -249,37 +251,6 @@ func runIyokan(args0 []string, args1 []string) error {
 	// Run iyokan
 	args := append(args0, args1...)
 	return execCmd(iyokanPath, args)
-}
-
-func genTestELF(
-	inputFileName string,
-	cmdOpts []string,
-	romSize, ramSize uint64,
-) error {
-	if !fileExists(inputFileName) {
-		return errors.New("File not found")
-	}
-	rom, ram, err := parseELF(inputFileName, romSize, ramSize)
-	if err != nil {
-		return err
-	}
-	if err = attachCommandLineOptions(ram, cmdOpts); err != nil {
-		return err
-	}
-
-	fmt.Printf("ROM [")
-	for _, b := range rom {
-		fmt.Printf("%d, ", b)
-	}
-	fmt.Printf("]\n")
-
-	fmt.Printf("RAM [")
-	for _, b := range ram {
-		fmt.Printf("%d, ", b)
-	}
-	fmt.Printf("]\n")
-
-	return nil
 }
 
 func packELF(
@@ -432,6 +403,10 @@ func (pkt *plainPacket) print(w io.Writer) error {
 }
 
 func doCC() error {
+	return doCCImpl(os.Args[2:])
+}
+
+func doCCImpl(inputArgs []string) error {
 	// Get the path of gcc
 	path, err := getPathOf("GCC")
 	if err != nil {
@@ -446,7 +421,7 @@ func doCC() error {
 
 	// Run
 	args := []string{"-nostdlib", "-T", rv32iRtPath + "/rv32i.lds", rv32iRtPath + "/utils.S"}
-	args = append(args, os.Args[2:]...)
+	args = append(args, inputArgs...)
 	return execCmd(path, args)
 }
 
@@ -758,6 +733,103 @@ func runIyokanTFHE(nClocks uint, bkeyFileName string, outputFileName string, sna
 	return nil
 }
 
+type testMetaInfo struct {
+	Result int      `json:"result"`
+	Args   []string `json:"args"`
+}
+
+type testBinary struct {
+	Name   string `json:"name"`
+	Rom    []int  `json:"rom"`
+	Ram    []int  `json:"ram"`
+	Result int    `json:"result"`
+}
+
+func doGenTest() error {
+	if len(os.Args) < 3 {
+		return errors.New("Specify test code")
+	}
+	testFileName := os.Args[2]
+
+	if !fileExists(testFileName) {
+		return errors.New("File not found")
+	}
+
+	fp, err := os.Open(testFileName)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+	_, testName := filepath.Split(testFileName)
+	testName = "test_" + testName
+
+	sc := bufio.NewScanner(fp)
+	r := regexp.MustCompile("//[\x20\t]*#TEST")
+	testInfo := testMetaInfo{}
+	foundInfo := false
+	for sc.Scan() {
+		if !r.MatchString(sc.Text()) {
+			continue
+		}
+		idx := strings.Index(sc.Text(), "{")
+		if idx == -1 {
+			continue
+		}
+		testJson := sc.Text()[idx:]
+		err = json.Unmarshal([]byte(testJson), &testInfo)
+		if err != nil {
+			continue
+		}
+		foundInfo = true
+		break
+	}
+
+	if !foundInfo {
+		return errors.New("test metadata not found in " + testFileName)
+	}
+
+	tempUuid, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	elfTempName := filepath.Join(os.TempDir(), tempUuid.String())
+	err = doCCImpl([]string{testFileName, "-o", elfTempName})
+	if err != nil {
+		return err
+	}
+	defer os.Remove(elfTempName)
+
+	rom, ram, err := parseELF(elfTempName, defaultROMSize, defaultRAMSize)
+	if err != nil {
+		return err
+	}
+	if err = attachCommandLineOptions(ram, testInfo.Args); err != nil {
+		return err
+	}
+
+	romInt := []int{}
+	ramInt := []int{}
+	for _, b := range rom {
+		romInt = append(romInt, int(b))
+	}
+	for _, b := range ram {
+		ramInt = append(ramInt, int(b))
+	}
+
+	testBin := testBinary{
+		Name:   testName,
+		Rom:    romInt,
+		Ram:    ramInt,
+		Result: testInfo.Result,
+	}
+	testBinJson, err := json.Marshal(testBin)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(testBinJson))
+	return nil
+}
+
 var kvspVersion = "unk"
 var kvspRevision = "unk"
 var iyokanRevision = "unk"
@@ -835,12 +907,8 @@ Commands:
 		err = doRun()
 	case "version":
 		err = doVersion()
-	case "genTestELF":
-		if len(os.Args) > 3 {
-			err = genTestELF(os.Args[2], os.Args[3:], defaultROMSize, defaultRAMSize)
-		} else {
-			err = genTestELF(os.Args[2], nil, defaultROMSize, defaultRAMSize)
-		}
+	case "genTest":
+		err = doGenTest()
 	default:
 		flag.Usage()
 		os.Exit(1)

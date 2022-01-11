@@ -35,7 +35,7 @@ class TestTopTester(c: TestTop, res: Int) extends PeekPokeTester(c) {
 class TestTopSpec extends AnyFreeSpec with Matchers {
     val testDir = new File("src/test/binary/")
     implicit val customConfig: Configuration = Configuration.default.withDefaults
-    testDir.listFiles().filter(f => f.getName().contains("test_c_fib_arg.json")).foreach { f =>
+    testDir.listFiles().filter(f => f.getName().contains(".json")).foreach { f =>
         val json = scala.io.Source.fromFile(f.getAbsolutePath()).mkString
         val testData = decode[TestData](json) match {
             case Right(data) => data
