@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.0.2] - 2022-01-12
+### Added
+- Add gen_tests.sh to generate core tests(eab695f)
+- Embed canary code 0xDEADBEEF after the bss section(94bb563)
+
+### Changed
+- Update README.md(2b40f79)
+- Expand ROM size to 4KiB(c2cfc3a)
+- Save initial sp value at the first of RAM(ffdf71f)
+
+### Removed
+- Remove core/src/test/binary(372f45b)
+
 ## [0.0.1] - 2022-01-10
 ### Added
 - The first release of kvsp-rv32i
