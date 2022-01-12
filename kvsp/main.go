@@ -117,14 +117,17 @@ func getPathOf(name string) (string, error) {
 }
 
 // Parse the input as ELF and get ROM and RAM images.
-func parseELF(fileName string, romSize, ramSize uint64) ([]byte, []byte, error) {
+func parseELF(fileName string, romSize, ramSize uint64) ([]byte, uint64, []byte, uint64, error) {
 	input, err := elf.Open(fileName)
 	if err != nil {
-		return nil, nil, err
+		return nil, 0, nil, 0, err
 	}
 
 	rom := make([]byte, romSize)
 	ram := make([]byte, ramSize)
+
+	romLastOffset := uint64(0)
+	ramLastOffset := uint64(0)
 
 	for _, prog := range input.Progs {
 		addr := prog.ProgHeader.Vaddr
@@ -136,24 +139,59 @@ func parseELF(fileName string, romSize, ramSize uint64) ([]byte, []byte, error) 
 		var mem []byte
 		if addr < 0x10000 { // ROM
 			if addr+size >= romSize {
-				return nil, nil, errors.New("Invalid ROM size: too small")
+				return nil, 0, nil, 0, errors.New("Invalid ROM size: too small")
 			}
 			mem = rom[addr : addr+size]
+			if romLastOffset < addr+size {
+				romLastOffset = addr + size
+			}
 		} else { // RAM
 			if addr-0x10000+size >= ramSize {
-				return nil, nil, errors.New("Invalid RAM size: too small")
+				return nil, 0, nil, 0, errors.New("Invalid RAM size: too small")
 			}
 			mem = ram[addr-0x10000 : addr-0x10000+size]
+			if ramLastOffset < addr-0x10000+size {
+				ramLastOffset = addr - 0x10000 + size
+			}
 		}
 
 		reader := prog.Open()
 		_, err := reader.Read(mem)
 		if err != nil {
-			return nil, nil, err
+			return nil, 0, nil, 0, err
 		}
 	}
 
-	return rom, ram, nil
+	// .bss is not contained in input.Progs
+	for _, bss := range input.Sections {
+		name := bss.Name
+		if name != ".bss" {
+			continue
+		}
+		addr := bss.Addr
+		size := bss.Size
+		if size == 0 {
+			continue
+		}
+
+		if addr < 0x10000 { // ROM
+			if addr+size >= romSize {
+				return nil, 0, nil, 0, errors.New("Invalid ROM size: too small")
+			}
+			if romLastOffset < addr+size {
+				romLastOffset = addr + size
+			}
+		} else { // RAM
+			if addr-0x10000+size >= ramSize {
+				return nil, 0, nil, 0, errors.New("Invalid RAM size: too small")
+			}
+			if ramLastOffset < addr-0x10000+size {
+				ramLastOffset = addr - 0x10000 + size
+			}
+		}
+	}
+
+	return rom, romLastOffset, ram, ramLastOffset, nil
 }
 
 func attachCommandLineOptions(ram []byte, cmdOptsSrc []string) error {
@@ -202,6 +240,21 @@ func attachCommandLineOptions(ram []byte, cmdOptsSrc []string) error {
 	initSP := index
 	write32le(ram[4:8], initSP)
 
+	return nil
+}
+
+func attachCanary(ram []byte, offset uint64) error {
+	// 0x0 is reserved as NULL
+	// 0x4 is reserved for initial SP value
+	if offset < 8 {
+		offset = 8
+	}
+
+	if offset+4 > uint64(len(ram)) {
+		return errors.New(fmt.Sprintf("offset %d exceeds RAM size %d", offset, len(ram)))
+	}
+
+	write32le(ram[offset:offset+4], 0xDEADBEEF)
 	return nil
 }
 
@@ -261,8 +314,11 @@ func packELF(
 	if !fileExists(inputFileName) {
 		return errors.New("File not found")
 	}
-	rom, ram, err := parseELF(inputFileName, romSize, ramSize)
+	rom, _, ram, ramLastOffset, err := parseELF(inputFileName, romSize, ramSize)
 	if err != nil {
+		return err
+	}
+	if err = attachCanary(ram, ramLastOffset); err != nil {
 		return err
 	}
 	if err = attachCommandLineOptions(ram, cmdOpts); err != nil {
@@ -799,8 +855,11 @@ func doGenTest() error {
 	}
 	defer os.Remove(elfTempName)
 
-	rom, ram, err := parseELF(elfTempName, defaultROMSize, defaultRAMSize)
+	rom, _, ram, ramLastOffset, err := parseELF(elfTempName, defaultROMSize, defaultRAMSize)
 	if err != nil {
+		return err
+	}
+	if err = attachCanary(ram, ramLastOffset); err != nil {
 		return err
 	}
 	if err = attachCommandLineOptions(ram, testInfo.Args); err != nil {
