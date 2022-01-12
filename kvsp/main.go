@@ -173,7 +173,7 @@ func attachCommandLineOptions(ram []byte, cmdOptsSrc []string) error {
 	}
 
 	ramSize := len(ram)
-	index := ramSize - 4
+	index := ramSize
 
 	// Set **argv to RAM
 	for i := len(cmdOpts) - 1; i >= 0; i-- {
@@ -200,7 +200,7 @@ func attachCommandLineOptions(ram []byte, cmdOptsSrc []string) error {
 	write32le(ram[index:index+4], argc)
 	// Save initial stack pointer in RAM
 	initSP := index
-	write32le(ram[ramSize-4:ramSize], initSP)
+	write32le(ram[4:8], initSP)
 
 	return nil
 }

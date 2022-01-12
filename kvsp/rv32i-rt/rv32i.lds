@@ -11,7 +11,7 @@ SECTIONS
     . = 0x00000000;
 
     .text : { *(.text) } :rom
-    . = 0x00010004;
+    . = 0x00010008;
     .data : { *(.data) } :ram
     .rodata : { *(.rodata) } :ram
     .bss : { *(.bss) } :ram
