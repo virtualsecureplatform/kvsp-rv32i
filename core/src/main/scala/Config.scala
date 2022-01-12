@@ -2,7 +2,7 @@ import scala.math.log
 import scala.math.ceil
 
 case class CoreConfig() {
-    val romByteCapacity = 1024
+    val romByteCapacity = 4096
     val romWordLength = 32
     val romDataWidth = romWordLength
     val romBytesPerWord = romWordLength / 8

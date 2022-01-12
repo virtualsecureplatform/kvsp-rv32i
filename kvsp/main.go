@@ -23,7 +23,7 @@ import (
 
 var flagVerbose bool
 
-const defaultROMSize = 1024
+const defaultROMSize = 4096
 const defaultRAMSize = 1024
 
 // Flag for a list of values
