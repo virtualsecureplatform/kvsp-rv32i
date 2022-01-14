@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -493,79 +494,96 @@ func doDebug() error {
 }
 
 func doEmu() error {
+	pkt, err := doEmuImpl(os.Args[2:])
+	pkt.print(os.Stdout)
+	return err
+}
+
+func doEmuImpl(args []string) (*plainPacket, error) {
 	// Parse command-line arguments.
 	fs := flag.NewFlagSet("emu", flag.ExitOnError)
 	var (
 		iyokanArgs arrayFlags
 	)
 	fs.Var(&iyokanArgs, "iyokan-args", "Raw arguments for Iyokan")
-	err := fs.Parse(os.Args[2:])
+	err := fs.Parse(args)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create tmp file for packing
 	packedFile, err := ioutil.TempFile("", "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer os.Remove(packedFile.Name())
 
 	// Pack
 	err = packELF(fs.Args()[0], packedFile.Name(), fs.Args()[1:], defaultROMSize, defaultRAMSize)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create tmp file for the result
 	resTmpFile, err := ioutil.TempFile("", "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer os.Remove(resTmpFile.Name())
 
 	// Run Iyokan in plain mode
 	blueprint, err := getPathOf("IYOKAN-BLUEPRINT-RV32I")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = runIyokan([]string{"plain", "-i", packedFile.Name(), "-o", resTmpFile.Name(), "--blueprint", blueprint}, iyokanArgs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Unpack the result
 	result, err := runIyokanPacket("packet2toml", "--in", resTmpFile.Name())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Parse and print the result
 	var pkt plainPacket
 	if err := pkt.loadTOML(result); err != nil {
-		return err
+		return nil, err
 	}
-	pkt.print(os.Stdout)
 
-	return nil
+	return &pkt, nil
 }
 
 func doDec() error {
+	pkt, err := doDecImpl(os.Args[2:])
+	if err != nil {
+		return err
+	}
+	pkt.print(os.Stdout)
+	return nil
+}
+
+func doDecImpl(args []string) (*plainPacket, error) {
 	// Parse command-line arguments.
 	fs := flag.NewFlagSet("dec", flag.ExitOnError)
 	var (
 		keyFileName   = fs.String("k", "", "Key file name")
 		inputFileName = fs.String("i", "", "Input file name (encrypted)")
 	)
-	err := fs.Parse(os.Args[2:])
+	err := fs.Parse(args)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if *keyFileName == "" || *inputFileName == "" {
-		return errors.New("Specify -k and -i options properly")
+		return nil, errors.New("Specify -k and -i options properly")
 	}
 
 	// Create tmp file for decryption
 	packedFile, err := ioutil.TempFile("", "")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer os.Remove(packedFile.Name())
 
@@ -578,20 +596,22 @@ func doDec() error {
 	// Unpack
 	result, err := runIyokanPacket("packet2toml", "--in", packedFile.Name())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Parse and print the result
 	var pkt plainPacket
 	if err := pkt.loadTOML(result); err != nil {
-		return err
+		return nil, err
 	}
-	pkt.print(os.Stdout)
-
-	return nil
+	return &pkt, nil
 }
 
 func doEnc() error {
+	return doEncImpl(os.Args[2:])
+}
+
+func doEncImpl(args []string) error {
 	// Parse command-line arguments.
 	fs := flag.NewFlagSet("enc", flag.ExitOnError)
 	var (
@@ -599,7 +619,7 @@ func doEnc() error {
 		inputFileName  = fs.String("i", "", "Input file name (plain)")
 		outputFileName = fs.String("o", "", "Output file name (encrypted)")
 	)
-	err := fs.Parse(os.Args[2:])
+	err := fs.Parse(args)
 	if err != nil {
 		return err
 	}
@@ -689,6 +709,10 @@ func doPlainpacket() error {
 }
 
 func doRun() error {
+	return doRunImpl(os.Args[2:])
+}
+
+func doRunImpl(args []string) error {
 	// Parse command-line arguments.
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
 	var (
@@ -702,7 +726,7 @@ func doRun() error {
 		iyokanArgs       arrayFlags
 	)
 	fs.Var(&iyokanArgs, "iyokan-args", "Raw arguments for Iyokan")
-	err := fs.Parse(os.Args[2:])
+	err := fs.Parse(args)
 	if err != nil {
 		return err
 	}
@@ -716,15 +740,15 @@ func doRun() error {
 		return err
 	}
 
-	args := []string{
+	runArgs := []string{
 		"-i", *inputFileName,
 		"--blueprint", blueprint,
 	}
 	if *numGPU > 0 {
-		args = append(args, "--enable-gpu", "--num-gpu", fmt.Sprint(*numGPU))
+		runArgs = append(runArgs, "--enable-gpu", "--num-gpu", fmt.Sprint(*numGPU))
 	}
 
-	return runIyokanTFHE(*nClocks, *bkeyFileName, *outputFileName, *snapshotFileName, *quiet, args, iyokanArgs)
+	return runIyokanTFHE(*nClocks, *bkeyFileName, *outputFileName, *snapshotFileName, *quiet, runArgs, iyokanArgs)
 }
 
 func doResume() error {
@@ -889,6 +913,135 @@ func doGenTest() error {
 	return nil
 }
 
+func doPlainTest() error {
+	_, _, _, err := doPlainTestImpl(os.Args[2:], true)
+	return err
+}
+
+func doPlainTestImpl(args []string, removeFile bool) (string, int, *testMetaInfo, error) {
+	if len(args) < 1 {
+		return "", 0, nil, errors.New("Specify test code")
+	}
+	testFileName := args[0]
+
+	if !fileExists(testFileName) {
+		return "", 0, nil, errors.New("File not found")
+	}
+
+	fp, err := os.Open(testFileName)
+	if err != nil {
+		return "", 0, nil, err
+	}
+	defer fp.Close()
+
+	sc := bufio.NewScanner(fp)
+	r := regexp.MustCompile("//[\x20\t]*#TEST")
+	testInfo := testMetaInfo{}
+	foundInfo := false
+	for sc.Scan() {
+		if !r.MatchString(sc.Text()) {
+			continue
+		}
+		idx := strings.Index(sc.Text(), "{")
+		if idx == -1 {
+			continue
+		}
+		testJson := sc.Text()[idx:]
+		err = json.Unmarshal([]byte(testJson), &testInfo)
+		if err != nil {
+			continue
+		}
+		foundInfo = true
+		break
+	}
+
+	if !foundInfo {
+		return "", 0, nil, errors.New("test metadata not found in " + testFileName)
+	}
+
+	tempUuid, err := uuid.NewRandom()
+	if err != nil {
+		return "", 0, nil, err
+	}
+	elfTempName := filepath.Join(os.TempDir(), tempUuid.String())
+	err = doCCImpl([]string{testFileName, "-o", elfTempName})
+	if err != nil {
+		return "", 0, nil, err
+	}
+	if removeFile {
+		defer os.Remove(elfTempName)
+	}
+
+	var emuArgs []string
+	emuArgs = append(emuArgs, elfTempName)
+	emuArgs = append(emuArgs, testInfo.Args...)
+	emuArgs = append(emuArgs, "-iyokan-args=--quiet")
+	resPkt, err := doEmuImpl(emuArgs)
+	if err != nil {
+		return "", 0, nil, err
+	}
+	if resPkt.Regs["reg_x8"] != testInfo.Result {
+		return "", 0, nil, errors.New(fmt.Sprintf("test failed expected:%d actual:%d", testInfo.Result, resPkt.Regs["x8"]))
+	}
+
+	return elfTempName, resPkt.NumCycles, &testInfo, nil
+}
+
+func doTFHETest() error {
+	// Parse command-line arguments.
+	fs := flag.NewFlagSet("tfhetest", flag.ExitOnError)
+	var (
+		skeyFileName  = fs.String("k", "", "Secret key file name")
+		bkeyFileName  = fs.String("bkey", "", "Bootstrapping key file name")
+		inputFileName = fs.String("i", "", "C file to test")
+		numGPU        = fs.Uint("g", 0, "Number of GPUs (Unspecify or set 0 for CPU mode)")
+	)
+	err := fs.Parse(os.Args[2:])
+	if err != nil {
+		return err
+	}
+	elfName, numCycle, testInfo, err := doPlainTestImpl([]string{*inputFileName}, false)
+	if err != nil {
+		return err
+	}
+	encUuid, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	encFileName := filepath.Join(os.TempDir(), encUuid.String())
+	err = doEncImpl(append([]string{"-k", *skeyFileName, "-i", elfName, "-o", encFileName}, testInfo.Args...))
+	if err != nil {
+		return err
+	}
+	defer os.Remove(encFileName)
+
+	resultUuid, err := uuid.NewRandom()
+	if err != nil {
+		return err
+	}
+	resultFileName := filepath.Join(os.TempDir(), resultUuid.String())
+	runArgs := []string{"-c", strconv.Itoa(numCycle), "-bkey", *bkeyFileName, "-i", encFileName, "-o", resultFileName}
+	if *numGPU > 0 {
+		runArgs = append(runArgs, "-g", strconv.Itoa(int(*numGPU)))
+	}
+	err = doRunImpl(runArgs)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(resultFileName)
+
+	resPkt, err := doDecImpl([]string{"-k", *skeyFileName, "-i", resultFileName})
+	if err != nil {
+		return err
+	}
+
+	if resPkt.Regs["reg_x8"] != testInfo.Result {
+		return errors.New(fmt.Sprintf("test failed expected:%d actual:%d", testInfo.Result, resPkt.Regs["x8"]))
+	}
+
+	return nil
+}
+
 var kvspVersion = "unk"
 var kvspRevision = "unk"
 var iyokanRevision = "unk"
@@ -968,6 +1121,10 @@ Commands:
 		err = doVersion()
 	case "genTest":
 		err = doGenTest()
+	case "plaintest":
+		err = doPlainTest()
+	case "tfhetest":
+		err = doTFHETest()
 	default:
 		flag.Usage()
 		os.Exit(1)
