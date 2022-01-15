@@ -29,12 +29,12 @@ echo "Test passed"
 SKEY=/tmp/sk
 BKEY=/tmp/bk
 
-$KVSP_PATH genkey -o $SKEY
-$KVSP_PATH genbkey -i $SKEY -o $BKEY
+$KVSP_PATH genkey -o $SKEY &> /dev/null
+$KVSP_PATH genbkey -i $SKEY -o $BKEY &> /dev/null
 echo "Testing Iyokan TFHE mode..."
 for FILE_PATH in $TEST_FILES; do
     echo "  Test ${FILE_PATH}"
-    $KVSP_PATH tfhetest -k $SKEY -bkey $BKEY -i $FILE_PATH
+    $KVSP_PATH tfhetest -k $SKEY -bkey $BKEY -i $FILE_PATH -g 2 &> /dev/null
     if [ $? -ne 0 ]; then
         echo "test failed"
         exit 1
