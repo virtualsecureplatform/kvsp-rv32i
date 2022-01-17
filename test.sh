@@ -12,7 +12,7 @@ cd $SCRIPT_DIR
 
 echo "Testing core.."
 cd core
-#sbt test
+sbt test
 cd $SCRIPT_DIR
 
 echo "Testing Iyokan plain mode..."
