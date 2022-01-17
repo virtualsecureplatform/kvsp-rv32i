@@ -495,8 +495,11 @@ func doDebug() error {
 
 func doEmu() error {
 	pkt, err := doEmuImpl(os.Args[2:])
+	if err != nil {
+		return err
+	}
 	pkt.print(os.Stdout)
-	return err
+	return nil
 }
 
 func doEmuImpl(args []string) (*plainPacket, error) {
